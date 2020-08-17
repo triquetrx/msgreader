@@ -1,5 +1,5 @@
 {
-  "name": "@freiraum/msgreader",
+  "name": "@npeersab/msgreader",
   "version": "1.1.1",
   "description": "",
   "main": "lib/index.js",
@@ -14,8 +14,8 @@
       "@babel/preset-env"
     ]
   },
-  "author": "@datsteves (FreiraumIO)",
-  "repository": "github:FreiraumIO/msgreader",
+  "author": "@npeersab (Noor Peersab)",
+  "repository": "github:npeersab/msgreader",
   "license": "ISC",
   "devDependencies": {
     "@babel/cli": "^7.0.0",
