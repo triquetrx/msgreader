@@ -18,7 +18,7 @@
 
 import { arraysEqual } from './utils';
 import CONST from './const';
-import DataStream from './data-stream';
+import DataStream from './data-stream-reader-lite';
 
 // MSG Reader implementation
 
