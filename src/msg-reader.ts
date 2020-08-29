@@ -16,16 +16,19 @@
  MSG Reader
  */
 
-import { arraysEqual, uInt2int } from './utils'
-import CONST from './const'
-import DataStream from './DataStream'
+import { arraysEqual } from "./utils";
+import CONST from "./const";
+import DataStream from "./data-stream";
 
 // MSG Reader implementation
 
 // check MSG file header
 function isMSGFile(ds) {
   ds.seek(0);
-  return arraysEqual(CONST.FILE_HEADER, ds.readInt8Array(CONST.FILE_HEADER.length));
+  return arraysEqual(
+    CONST.FILE_HEADER,
+    ds.readInt8Array(CONST.FILE_HEADER.length)
+  );
 }
 
 // FAT utils
@@ -71,28 +74,162 @@ function parseMsgData(ds) {
 }
 
 // extract header data
-function headerData(ds) {
+function headerData(ds): MsgData {
   var headerData = {};
 
   // system data
-  headerData.bigBlockSize =
-    ds.readByte(/*const position*/30) == CONST.MSG.L_BIG_BLOCK_MARK ? CONST.MSG.L_BIG_BLOCK_SIZE : CONST.MSG.S_BIG_BLOCK_SIZE;
-  headerData.bigBlockLength = headerData.bigBlockSize / 4;
-  headerData.xBlockLength = headerData.bigBlockLength - 1;
+  const bigBlockSize =
+    ds.readByte(/*const position*/ 30) == CONST.MSG.L_BIG_BLOCK_MARK
+      ? CONST.MSG.L_BIG_BLOCK_SIZE
+      : CONST.MSG.S_BIG_BLOCK_SIZE;
 
-  // header data
-  headerData.batCount = ds.readInt(CONST.MSG.HEADER.BAT_COUNT_OFFSET);
-  headerData.propertyStart = ds.readInt(CONST.MSG.HEADER.PROPERTY_START_OFFSET);
-  headerData.sbatStart = ds.readInt(CONST.MSG.HEADER.SBAT_START_OFFSET);
-  headerData.sbatCount = ds.readInt(CONST.MSG.HEADER.SBAT_COUNT_OFFSET);
-  headerData.xbatStart = ds.readInt(CONST.MSG.HEADER.XBAT_START_OFFSET);
-  headerData.xbatCount = ds.readInt(CONST.MSG.HEADER.XBAT_COUNT_OFFSET);
+  const bigBlockLength = bigBlockSize / 4;
 
-  return headerData;
+  return {
+    // system data
+    bigBlockSize,
+    bigBlockLength,
+    xBlockLength: bigBlockLength - 1,
+
+    // header data
+    batCount: ds.readInt(CONST.MSG.HEADER.BAT_COUNT_OFFSET),
+    propertyStart: ds.readInt(CONST.MSG.HEADER.PROPERTY_START_OFFSET),
+    sbatStart: ds.readInt(CONST.MSG.HEADER.SBAT_START_OFFSET),
+    sbatCount: ds.readInt(CONST.MSG.HEADER.SBAT_COUNT_OFFSET),
+    xbatStart: ds.readInt(CONST.MSG.HEADER.XBAT_START_OFFSET),
+    xbatCount: ds.readInt(CONST.MSG.HEADER.XBAT_COUNT_OFFSET),
+  };
+}
+
+enum TypeEnum {
+  DIRECTORY = 1,
+  DOCUMENT = 2,
+  ROOT = 5,
+}
+
+interface Property {
+  index: number;
+
+  type: TypeEnum;
+  name: string;
+  previousProperty: number;
+  nextProperty: number;
+  childProperty: number;
+  startBlock: number;
+  sizeBlock: number;
+  children?: number[];
+}
+
+interface MsgData {
+  bigBlockSize: number;
+  bigBlockLength: number;
+  xBlockLength: number;
+  batCount: number;
+  propertyStart: number;
+  sbatStart: number;
+  sbatCount: number;
+  xbatStart: number;
+  xbatCount: number;
+
+  fieldsData?: FieldsData;
+  propertyData?: Property[];
+  sbatData?: any[];
+  batData?: any[];
+}
+
+interface SomeOxProps {
+  /**
+   * Contains the subject of the email message.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/0037-PidTagSubject.md
+   */
+  subject?: string;
+
+  /**
+   * Contains the display name of the sending mailbox owner.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/0C1A-PidTagSenderName.md
+   */
+  senderName?: string;
+
+  /**
+   * Contains the email address of the sending mailbox owner.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/0C1F-PidTagSenderEmailAddress.md
+   */
+  senderEmail?: string;
+
+  /**
+   * Contains message body text in plain text format.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/1000-PidTagBody.md
+   */
+  body?: string;
+
+  /**
+   * Contains transport-specific message envelope information for email.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/007D-PidTagTransportMessageHeaders.md
+   */
+  headers?: string;
+
+  /**
+   * Contains message body text in compressed RTF format.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/1009-PidTagRtfCompressed.md
+   */
+  compressedRtf?: Uint8Array;
+
+  /**
+   * Contains a file name extension that indicates the document type of an attachment.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/3703-PidTagAttachExtension.md
+   */
+  extension?: string;
+
+  fileNameShort?: string;
+
+  /**
+   * Contains the full filename and extension of the Attachment object.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/3707-PidTagAttachLongFilename.md
+   */
+  fileName?: string;
+
+  /**
+   * Contains a content identifier unique to the Message object that matches a
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/3712-PidTagAttachContentId.md
+   */
+  pidContentId?: string;
+
+  /**
+   * Contains the display name of the folder.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/3001-PidTagDisplayName.md
+   */
+  name?: string;
+
+  /**
+   * Contains the email address of a Message object.
+   *
+   * @see https://github.com/HiraokaHyperTools/OXPROPS/blob/master/JSON/3003-PidTagEmailAddress.md
+   */
+  email?: string;
+}
+
+interface FieldsData extends SomeOxProps {
+  contentLength?: number;
+  dataId?: any;
+  innerMsgContent?: boolean;
+  attachments?: FieldsData[];
+  recipients?: FieldsData[];
+  error?: string;
 }
 
 function batCountInHeader(msgData) {
-  var maxBatsInHeader = (CONST.MSG.S_BIG_BLOCK_SIZE - CONST.MSG.HEADER.BAT_START_OFFSET) / 4;
+  var maxBatsInHeader =
+    (CONST.MSG.S_BIG_BLOCK_SIZE - CONST.MSG.HEADER.BAT_START_OFFSET) / 4;
   return Math.min(msgData.batCount, maxBatsInHeader);
 }
 
@@ -100,7 +237,7 @@ function batData(ds, msgData) {
   var result = new Array(batCountInHeader(msgData));
   ds.seek(CONST.MSG.HEADER.BAT_START_OFFSET);
   for (var i = 0; i < result.length; i++) {
-    result[i] = ds.readInt32()
+    result[i] = ds.readInt32();
   }
   return result;
 }
@@ -109,7 +246,11 @@ function sbatData(ds, msgData) {
   var result = [];
   var startIndex = msgData.sbatStart;
 
-  for (var i = 0; i < msgData.sbatCount && startIndex != CONST.MSG.END_OF_CHAIN; i++) {
+  for (
+    var i = 0;
+    i < msgData.sbatCount && startIndex != CONST.MSG.END_OF_CHAIN;
+    i++
+  ) {
     result.push(startIndex);
     startIndex = getNextBlock(ds, msgData, startIndex);
   }
@@ -129,7 +270,10 @@ function xbatData(ds, msgData) {
     var blocksToProcess = Math.min(remainingBlocks, msgData.xBlockLength);
     for (var j = 0; j < blocksToProcess; j++) {
       var blockStartAt = xBatBlock[j];
-      if (blockStartAt == CONST.MSG.UNUSED_BLOCK || blockStartAt == CONST.MSG.END_OF_CHAIN) {
+      if (
+        blockStartAt == CONST.MSG.UNUSED_BLOCK ||
+        blockStartAt == CONST.MSG.END_OF_CHAIN
+      ) {
         break;
       }
       msgData.batData.push(blockStartAt);
@@ -148,14 +292,17 @@ function propertyData(ds, msgData) {
     convertBlockToProperties(ds, msgData, currentOffset, props);
     currentOffset = getNextBlock(ds, msgData, currentOffset);
   }
-  createPropertyHierarchy(props, /*property with index 0 (zero) always as root*/props[0]);
+  createPropertyHierarchy(
+    props,
+    /*property with index 0 (zero) always as root*/ props[0]
+  );
   return props;
 }
 
 function convertName(ds, offset) {
   var nameLength = ds.readShort(offset + CONST.MSG.PROP.NAME_SIZE_OFFSET);
   if (nameLength < 1) {
-    return '';
+    return "";
   } else {
     return ds.readStringAt(offset, nameLength / 2);
   }
@@ -167,17 +314,18 @@ function convertProperty(ds, index, offset) {
     type: ds.readByte(offset + CONST.MSG.PROP.TYPE_OFFSET),
     name: convertName(ds, offset),
     // hierarchy
-    previousProperty: ds.readInt(offset + CONST.MSG.PROP.PREVIOUS_PROPERTY_OFFSET),
+    previousProperty: ds.readInt(
+      offset + CONST.MSG.PROP.PREVIOUS_PROPERTY_OFFSET
+    ),
     nextProperty: ds.readInt(offset + CONST.MSG.PROP.NEXT_PROPERTY_OFFSET),
     childProperty: ds.readInt(offset + CONST.MSG.PROP.CHILD_PROPERTY_OFFSET),
     // data offset
     startBlock: ds.readInt(offset + CONST.MSG.PROP.START_BLOCK_OFFSET),
-    sizeBlock: ds.readInt(offset + CONST.MSG.PROP.SIZE_OFFSET)
+    sizeBlock: ds.readInt(offset + CONST.MSG.PROP.SIZE_OFFSET),
   };
 }
 
 function convertBlockToProperties(ds, msgData, propertyBlockOffset, props) {
-
   var propertyCount = msgData.bigBlockSize / CONST.MSG.PROP.PROPERTY_SIZE;
   var propertyOffset = getBlockOffsetAt(msgData, propertyBlockOffset);
 
@@ -199,7 +347,6 @@ function convertBlockToProperties(ds, msgData, propertyBlockOffset, props) {
 }
 
 function createPropertyHierarchy(props, nodeProperty) {
-
   if (nodeProperty.childProperty == CONST.MSG.PROP.NO_INDEX) {
     return;
   }
@@ -230,22 +377,23 @@ function createPropertyHierarchy(props, nodeProperty) {
 function fieldsData(ds, msgData) {
   var fields = {
     attachments: [],
-    recipients: []
+    recipients: [],
   };
   fieldsDataDir(ds, msgData, msgData.propertyData[0], fields);
   return fields;
 }
 
 function fieldsDataDir(ds, msgData, dirProperty, fields) {
-
   if (dirProperty.children && dirProperty.children.length > 0) {
     for (var i = 0; i < dirProperty.children.length; i++) {
       var childProperty = msgData.propertyData[dirProperty.children[i]];
 
       if (childProperty.type == CONST.MSG.PROP.TYPE_ENUM.DIRECTORY) {
-        fieldsDataDirInner(ds, msgData, childProperty, fields)
-      } else if (childProperty.type == CONST.MSG.PROP.TYPE_ENUM.DOCUMENT
-        && childProperty.name.indexOf(CONST.MSG.FIELD.PREFIX.DOCUMENT) == 0) {
+        fieldsDataDirInner(ds, msgData, childProperty, fields);
+      } else if (
+        childProperty.type == CONST.MSG.PROP.TYPE_ENUM.DOCUMENT &&
+        childProperty.name.indexOf(CONST.MSG.FIELD.PREFIX.DOCUMENT) == 0
+      ) {
         fieldsDataDocument(ds, msgData, childProperty, fields);
       }
     }
@@ -254,19 +402,16 @@ function fieldsDataDir(ds, msgData, dirProperty, fields) {
 
 function fieldsDataDirInner(ds, msgData, dirProperty, fields) {
   if (dirProperty.name.indexOf(CONST.MSG.FIELD.PREFIX.ATTACHMENT) == 0) {
-
     // attachment
     var attachmentField = {};
     fields.attachments.push(attachmentField);
     fieldsDataDir(ds, msgData, dirProperty, attachmentField);
   } else if (dirProperty.name.indexOf(CONST.MSG.FIELD.PREFIX.RECIPIENT) == 0) {
-
     // recipient
     var recipientField = {};
     fields.recipients.push(recipientField);
     fieldsDataDir(ds, msgData, dirProperty, recipientField);
   } else {
-
     // other dir
     var childFieldType = getFieldType(dirProperty);
     if (childFieldType != CONST.MSG.FIELD.DIR_TYPE.INNER_MSG) {
@@ -289,10 +434,9 @@ function fieldsDataDocument(ds, msgData, documentProperty, fields) {
     fields[fieldName] = getFieldValue(ds, msgData, documentProperty, fieldType);
   }
   if (fieldClass == CONST.MSG.FIELD.CLASS_MAPPING.ATTACHMENT_DATA) {
-
     // attachment specific info
-    fields['dataId'] = documentProperty.index;
-    fields['contentLength'] = documentProperty.sizeBlock;
+    fields["dataId"] = documentProperty.index;
+    fields["contentLength"] = documentProperty.sizeBlock;
   }
 }
 
@@ -304,52 +448,101 @@ function getFieldType(fieldProperty) {
 // extractor structure to manage bat/sbat block types and different data types
 var extractorFieldValue = {
   sbat: {
-    'extractor': function extractDataViaSbat(ds, msgData, fieldProperty, dataTypeExtractor) {
+    extractor: function extractDataViaSbat(
+      ds,
+      msgData,
+      fieldProperty,
+      dataTypeExtractor
+    ) {
       var chain = getChainByBlockSmall(ds, msgData, fieldProperty);
       if (chain.length == 1) {
-        return readDataByBlockSmall(ds, msgData, fieldProperty.startBlock, fieldProperty.sizeBlock, dataTypeExtractor);
+        return readDataByBlockSmall(
+          ds,
+          msgData,
+          fieldProperty.startBlock,
+          fieldProperty.sizeBlock,
+          dataTypeExtractor
+        );
       } else if (chain.length > 1) {
-        return readChainDataByBlockSmall(ds, msgData, fieldProperty, chain, dataTypeExtractor);
+        return readChainDataByBlockSmall(
+          ds,
+          msgData,
+          fieldProperty,
+          chain,
+          dataTypeExtractor
+        );
       }
       return null;
     },
     dataType: {
-      'string': function extractBatString(ds, msgData, blockStartOffset, bigBlockOffset, blockSize) {
+      string: function extractBatString(
+        ds,
+        msgData,
+        blockStartOffset,
+        bigBlockOffset,
+        blockSize
+      ) {
         ds.seek(blockStartOffset + bigBlockOffset);
         return ds.readString(blockSize);
       },
-      'unicode': function extractBatUnicode(ds, msgData, blockStartOffset, bigBlockOffset, blockSize) {
+      unicode: function extractBatUnicode(
+        ds,
+        msgData,
+        blockStartOffset,
+        bigBlockOffset,
+        blockSize
+      ) {
         ds.seek(blockStartOffset + bigBlockOffset);
         return ds.readUCS2String(blockSize / 2);
       },
-      'binary': function extractBatBinary(ds, msgData, blockStartOffset, bigBlockOffset, blockSize) {
+      binary: function extractBatBinary(
+        ds,
+        msgData,
+        blockStartOffset,
+        bigBlockOffset,
+        blockSize
+      ) {
         ds.seek(blockStartOffset + bigBlockOffset);
-        var toReadLength = Math.min(Math.min(msgData.bigBlockSize - bigBlockOffset, blockSize), CONST.MSG.SMALL_BLOCK_SIZE);
+        var toReadLength = Math.min(
+          Math.min(msgData.bigBlockSize - bigBlockOffset, blockSize),
+          CONST.MSG.SMALL_BLOCK_SIZE
+        );
         return ds.readUint8Array(toReadLength);
-      }
-    }
+      },
+    },
   },
   bat: {
-    'extractor': function extractDataViaBat(ds, msgData, fieldProperty, dataTypeExtractor) {
+    extractor: function extractDataViaBat(
+      ds,
+      msgData,
+      fieldProperty,
+      dataTypeExtractor
+    ) {
       var offset = getBlockOffsetAt(msgData, fieldProperty.startBlock);
       ds.seek(offset);
       return dataTypeExtractor(ds, fieldProperty);
     },
     dataType: {
-      'string': function extractSbatString(ds, fieldProperty) {
+      string: function extractSbatString(ds, fieldProperty) {
         return ds.readString(fieldProperty.sizeBlock);
       },
-      'unicode': function extractSbatUnicode(ds, fieldProperty) {
+      unicode: function extractSbatUnicode(ds, fieldProperty) {
         return ds.readUCS2String(fieldProperty.sizeBlock / 2);
       },
-      'binary': function extractSbatBinary(ds, fieldProperty) {
+      binary: function extractSbatBinary(ds, fieldProperty) {
         return ds.readUint8Array(fieldProperty.sizeBlock);
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
-function readDataByBlockSmall(ds, msgData, startBlock, blockSize, dataTypeExtractor) {
+function readDataByBlockSmall(
+  ds,
+  msgData,
+  startBlock,
+  blockSize,
+  dataTypeExtractor
+) {
   var byteOffset = startBlock * CONST.MSG.SMALL_BLOCK_SIZE;
   var bigBlockNumber = Math.floor(byteOffset / msgData.bigBlockSize);
   var bigBlockOffset = byteOffset % msgData.bigBlockSize;
@@ -362,14 +555,32 @@ function readDataByBlockSmall(ds, msgData, startBlock, blockSize, dataTypeExtrac
   }
   var blockStartOffset = getBlockOffsetAt(msgData, nextBlock);
 
-  return dataTypeExtractor(ds, msgData, blockStartOffset, bigBlockOffset, blockSize);
+  return dataTypeExtractor(
+    ds,
+    msgData,
+    blockStartOffset,
+    bigBlockOffset,
+    blockSize
+  );
 }
 
-function readChainDataByBlockSmall(ds, msgData, fieldProperty, chain, dataTypeExtractor) {
+function readChainDataByBlockSmall(
+  ds,
+  msgData,
+  fieldProperty,
+  chain,
+  dataTypeExtractor
+) {
   var resultData = new Int8Array(fieldProperty.sizeBlock);
 
   for (var i = 0, idx = 0; i < chain.length; i++) {
-    var data = readDataByBlockSmall(ds, msgData, chain[i], CONST.MSG.SMALL_BLOCK_SIZE, extractorFieldValue.sbat.dataType.binary);
+    var data = readDataByBlockSmall(
+      ds,
+      msgData,
+      chain[i],
+      CONST.MSG.SMALL_BLOCK_SIZE,
+      extractorFieldValue.sbat.dataType.binary
+    );
     for (var j = 0; j < data.length; j++) {
       resultData[idx++] = data[j];
     }
@@ -392,23 +603,33 @@ function getFieldValue(ds, msgData, fieldProperty, type) {
   var value = null;
 
   var valueExtractor =
-    fieldProperty.sizeBlock < CONST.MSG.BIG_BLOCK_MIN_DOC_SIZE ? extractorFieldValue.sbat : extractorFieldValue.bat;
-  var dataTypeExtractor = valueExtractor.dataType[CONST.MSG.FIELD.TYPE_MAPPING[type]];
+    fieldProperty.sizeBlock < CONST.MSG.BIG_BLOCK_MIN_DOC_SIZE
+      ? extractorFieldValue.sbat
+      : extractorFieldValue.bat;
+  var dataTypeExtractor =
+    valueExtractor.dataType[CONST.MSG.FIELD.TYPE_MAPPING[type]];
 
   if (dataTypeExtractor) {
-    value = valueExtractor.extractor(ds, msgData, fieldProperty, dataTypeExtractor);
+    value = valueExtractor.extractor(
+      ds,
+      msgData,
+      fieldProperty,
+      dataTypeExtractor
+    );
   }
   return value;
 }
 
 export default class MsgReader {
+  ds: DataStream;
+  fileData: MsgData;
   constructor(arrayBuffer) {
     this.ds = new DataStream(arrayBuffer, 0, DataStream.LITTLE_ENDIAN);
   }
 
   getFileData() {
     if (!isMSGFile(this.ds)) {
-      return {error: 'Unsupported file type!'};
+      return { error: "Unsupported file type!" };
     }
     if (this.fileData == null) {
       this.fileData = parseMsgData(this.ds);
@@ -421,10 +642,18 @@ export default class MsgReader {
     @return {Object} The attachment for specific attachment key
     */
   getAttachment(attach) {
-    var attachData = typeof attach === 'number' ? this.fileData.fieldsData.attachments[attach] : attach;
+    var attachData =
+      typeof attach === "number"
+        ? this.fileData.fieldsData.attachments[attach]
+        : attach;
     var fieldProperty = this.fileData.propertyData[attachData.dataId];
-    var fieldData = getFieldValue(this.ds, this.fileData, fieldProperty, getFieldType(fieldProperty));
+    var fieldData = getFieldValue(
+      this.ds,
+      this.fileData,
+      fieldProperty,
+      getFieldType(fieldProperty)
+    );
 
-    return {fileName: attachData.fileName, content: fieldData};
+    return { fileName: attachData.fileName, content: fieldData };
   }
 }

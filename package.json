@@ -1,25 +1,29 @@
 {
   "name": "@npeersab/msgreader",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "",
   "main": "lib/index.js",
-  "private": false,
+  "types": "lib/index.d.ts",
   "scripts": {
-    "build": "node_modules/@babel/cli/bin/babel.js src --out-dir lib",
-    "test": "echo \"Error: no test specified\"",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
     "prepare": "npm run build"
   },
-  "babel": {
-    "presets": [
-      "@babel/preset-env"
-    ]
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npeersab/msgreader.git"
   },
   "author": "@npeersab (Noor Peersab)",
-  "repository": "github:npeersab/msgreader",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/npeersab/msgreader/issues"
+  },
+  "homepage": "https://github.com/npeersab/msgreader#readme",
   "devDependencies": {
-    "@babel/cli": "^7.0.0",
-    "@babel/core": "^7.0.0",
-    "@babel/preset-env": "^7.0.0"
+    "typescript": "^3.7.4"
+  },
+  "dependencies": {
+    "@types/node": "^14.6.2",
+    "fast-text-encoding": "^1.0.3"
   }
 }
