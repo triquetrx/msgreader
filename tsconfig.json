@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2015",
     "module": "commonjs",
-    "lib": ["ES2018", "DOM"],
+    "lib": ["es2018"],
     "declaration": true,
     "outDir": "lib"
   }
