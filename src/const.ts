@@ -56,7 +56,7 @@ export default {
                 // email specific
                 '0037': 'subject',
                 '0c1a': 'senderName',
-                '0c1f': 'senderEmail',
+                '5d02': 'senderEmail',
                 '1000': 'body',
                 '007d': 'headers',
                 '1009': 'compressedRtf',
